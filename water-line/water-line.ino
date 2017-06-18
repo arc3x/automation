@@ -104,7 +104,9 @@ const unsigned long SEC_5 = 5000;
 const unsigned long SEC_1 = 1000;
 
 // set pin numbers
-const int buttonPin = 12;     
+const int buttonPin = 12;    
+const int howoftenPot = 0;
+const int timeonPot = 1; 
 const int ledPin =  13;      
 
 // stepper motor
@@ -184,7 +186,7 @@ bool idle() {
   // default return success
   //int returnValue = 1;
   // debug    
-  ardprintf("clock: %u / %u\tbuttonState: %d\tskipNextWatering: %d\twaterNow: %d\n", millis()-timer, howoften, buttonState, skipNextWatering, waterNow);
+  ardprintf("clock: %u / %u\tbuttonState: %d\tskipNextWatering: %d\thowoftenPot: %d\n", millis()-timer, howoften, buttonState, skipNextWatering, analogRead(howoftenPot));
   // read sensors
   buttonRead = digitalRead(buttonPin);
 
