@@ -1,51 +1,89 @@
-
+/*
+ * Water Line automation
+ * 
+ * 
+ */
 
 #include <Wire.h>
 #include "Adafruit_MotorShield.h"
 #include "Adafruit_MS_PWMServoDriver.h"
-Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
-Adafruit_StepperMotor *myMotor = AFMS.getStepper(200, 2);
 
-unsigned long DAY_1 = 86400000;
-unsigned long DAY_2 = 172800000;
-unsigned long MIN_15 = 900000;
-unsigned long MIN_2 = 120000;   
-unsigned long MIN_1 = 60000;
+// define boolean values because..
+typedef int bool;
+#define true 1
+#define false 0
 
+// debug for testing without motor | false=off - motor present,   true=on - no motor
+const bool DEBUG_NO_MOTOR = false;
 
+// time constants
+const unsigned long DAY_1 = 86400000;
+const unsigned long DAY_2 = 172800000;
+const unsigned long MIN_15 = 900000;
+const unsigned long MIN_2 = 120000;   
+const unsigned long MIN_1 = 60000;
+const unsigned long SEC_30 = 30000;
+const unsigned long SEC_10 = 10000;
 
-unsigned long timer = millis();
-unsigned long timeon = MIN_15;   //open time in millis
-unsigned long howoften = DAY_2;    //how often to water in millis
+// stepper motor
+Adafruit_MotorShield AFMS; 
+Adafruit_StepperMotor* myMotor;
 
+// timer variables
+unsigned long timer, timeon, howoften;
 
 void setup() {
-  AFMS.begin();
-  myMotor->setSpeed(1);
+  // enable serial monitor
   Serial.begin(9600);
+  // init motor
+  if (!DEBUG_NO_MOTOR) {
+    AFMS = Adafruit_MotorShield(); 
+    myMotor = AFMS.getStepper(200, 2);
+    AFMS.begin();
+    myMotor->setSpeed(1); 
+  } 
+  // init timer
+  timer = millis();
 
+  // ***
+  // Application variables
+  // ***
+  howoften = SEC_30;    // watering interval
+  timeon = SEC_10;     // time valve remains open  
 }
 
 void loop() {
-  Serial.println("millis(), timer, howoften, millis-timer :");Serial.print(millis());Serial.print(" | ");Serial.print(timer);Serial.print(" | ");Serial.print(howoften);Serial.print(" | ");Serial.println(millis() - timer);
- 
-  if (millis() - timer > howoften) { //test if time to water
-    Serial.print(millis());Serial.print("  ");
-    Serial.println(millis()-timer);
-    Serial.print("timer= ");Serial.println(timer);
-    
-    myMotor->step(180, FORWARD, INTERLEAVE); 
-    myMotor->release();
-    Serial.println("on");
-    delay(timeon);
-    myMotor->step(180, BACKWARD, INTERLEAVE);
-    myMotor->release();
-    Serial.println("off");
-    timer = millis();
-    
-    
+  // open valve & delay
+  moveMotorThenDelay(FORWARD, timeon);
+  // close valve
+  moveMotorThenDelay(BACKWARD, 0);
+  // idle for the delay period
+  while (millis() - timer < howoften) {
+    idle();
   }
+  // reset timer
+  timer = millis();
 }
 
+// idle loop
+void idle() {
+  // debug
+  Serial.println("millis(), timer, howoften, millis-timer :");Serial.print(millis());Serial.print(" | ");Serial.print(timer);Serial.print(" | ");Serial.print(howoften);Serial.print(" | ");Serial.println(millis() - timer);    
+}
+
+// mover the motor forward and delay for delayAfter milliseconds after move
+void moveMotorThenDelay(int direction, unsigned long delayAfter) {
+  direction==FORWARD ? Serial.println("opening valve") : Serial.println("closing valve");
+  if (!DEBUG_NO_MOTOR) {
+    myMotor->step(180, direction, DOUBLE); 
+    myMotor->release();
+  } else {
+    // TODO: simulate motor
+  }
+  if (delayAfter > 0) {
+    Serial.print("sleeping ");Serial.print((unsigned long)delayAfter/(unsigned long)1000);Serial.println(" seconds");
+  }
+  delay(delayAfter);  
+}
 
 
