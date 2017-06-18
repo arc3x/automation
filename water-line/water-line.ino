@@ -1,8 +1,8 @@
 
 
 #include <Wire.h>
-#include <Adafruit_MotorShield.h>
-#include "utility/Adafruit_MS_PWMServoDriver.h"
+#include "Adafruit_MotorShield.h"
+#include "Adafruit_MS_PWMServoDriver.h"
 Adafruit_MotorShield AFMS = Adafruit_MotorShield(); 
 Adafruit_StepperMotor *myMotor = AFMS.getStepper(200, 2);
 
