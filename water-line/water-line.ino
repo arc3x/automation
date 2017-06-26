@@ -93,9 +93,14 @@ typedef int bool;
 const bool DEBUG_NO_MOTOR = false;
 
 // time constants
+const unsigned long DAY_0p5 = 43200000;
 const unsigned long DAY_1 = 86400000;
+const unsigned long DAY_1p5 = 129600000;
 const unsigned long DAY_2 = 172800000;
+const unsigned long MIN_20 = 1200000;
 const unsigned long MIN_15 = 900000;
+const unsigned long MIN_10 = 600000;
+const unsigned long MIN_5 = 300000;
 const unsigned long MIN_2 = 120000;   
 const unsigned long MIN_1 = 60000;
 const unsigned long SEC_30 = 30000;
@@ -107,7 +112,7 @@ const unsigned long SEC_1 = 1000;
 const int buttonPin = 12;    
 const int howoftenPot = 0;
 const int timeonPot = 1; 
-const int ledPin =  13;      
+const int ledPin =  10;      
 
 // stepper motor
 Adafruit_MotorShield AFMS; 
@@ -163,11 +168,14 @@ void loop() {
     // open valve & delay
     moveMotorThenDelay(FORWARD, timeon);
     // close valve
-    moveMotorThenDelay(BACKWARD, 0);
-    // reset timer
-        
-  } 
-  timer = millis() - timeon;
+    moveMotorThenDelay(BACKWARD, 0);        
+    timer = millis() - timeon;
+  } else {
+    timer = millis();
+  }
+  // reset timer
+  
+  digitalWrite(ledPin, LOW);
   skipNextWatering = false;
   // idle for the delay period
   while ((millis() - timer < howoften) && idle()) {
@@ -179,31 +187,58 @@ void loop() {
 
 }
 
+unsigned long processHowoften(int read) {
+  if (read >= 0 && read < 256) {
+    return DAY_2;
+  } else if (read >= 256 && read < 512) {
+    return DAY_1p5;
+  } else if (read >= 512 && read < 768) {
+    return DAY_1;
+  } else if (read >= 768 && read < 1024) {
+    return DAY_0p5;
+  }  
+}
+
+unsigned long processTimeon(int read) {
+  if (read >= 0 && read < 256) {
+    return MIN_5;
+  } else if (read >= 256 && read < 512) {
+    return MIN_10;
+  } else if (read >= 512 && read < 768) {
+    return MIN_15;
+  } else if (read >= 768 && read < 1024) {
+    return MIN_20;
+  }  
+}
+
 // idle loop returns 0 - kill idle
 //                   1 - standard success
-
 bool idle() {
   // default return success
   //int returnValue = 1;
   // debug    
-  ardprintf("clock: %u / %u\tbuttonState: %d\tskipNextWatering: %d\thowoftenPot: %d\n", millis()-timer, howoften, buttonState, skipNextWatering, analogRead(howoftenPot));
+  ardprintf("clock: %u / %u\tbuttonState: %d\tskipNextWatering: %d\thowofter: %u\ttimeon: %u\n", millis()-timer, howoften, buttonState, skipNextWatering, howoften, timeon);
   // read sensors
   buttonRead = digitalRead(buttonPin);
-
+  howoften = processHowoften(analogRead(howoftenPot));
+  timeon = processTimeon(analogRead(timeonPot));
   // do logic
   if (buttonRead == 1) {    
     if (skipNextWatering == true) {
+      digitalWrite(ledPin, LOW);
       skipNextWatering = false;            
       buttonRead = digitalRead(buttonPin);
       delay(1000);
       timer += 500;
-    } else {
-      skipNextWatering = true;
+    } else {      
       delay(5000);    
       timer += 5000;
+      skipNextWatering = true;
+      digitalWrite(ledPin, HIGH);
       buttonRead = digitalRead(buttonPin);
       //ardprintf("timer: %u\tclock: %u / %u\tbuttonState: %d\tskipNextWatering: %d\n", timer, millis()-timer, howoften, buttonState, skipNextWatering);
       if (buttonRead == 1) {
+        digitalWrite(ledPin, LOW);
         skipNextWatering = false;
         waterNow = true;
         //returnValue = 1;
@@ -221,7 +256,7 @@ void moveMotorThenDelay(int direction, unsigned long delayAfter) {
   motorInUse = true;
   direction==FORWARD ? Serial.println("opening valve") : Serial.println("closing valve");
   if (!DEBUG_NO_MOTOR) {
-    myMotor->step(180, direction, DOUBLE); 
+    myMotor->step(90, direction, DOUBLE); 
     myMotor->release();
   } else {
     // TODO: simulate motor
